@@ -1,31 +1,241 @@
 var express = require('express');
 var router = express.Router();
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 var usuario = require('../models/usuario');
+
+const SECRET_KEY = "NOTESAPI";
 
 //Crear un usuario
 router.post('/', function (req, res) {
-    let u = new usuario({
-        nombre: req.body.nombre,
-        apellido: req.body.apellido,
-        email: req.body.email,
-        password: req.body.password,
-        plan: req.body.plan,
-        fechaDeNacimiento: req.body.fechaDeNacimiento
-    });
-    u.save().then(result => {
+    
+    let { nombre, apellido, email, password, plan, fechaNacimiento } = req.body;
+    nombre = nombre.trim();
+    apellido = apellido.trim();
+    email = email.trim();
+    password = password.trim();
+    plan = plan.trim();
+    fechaNacimiento = fechaNacimiento.trim();
+
+    if (nombre === "" || apellido === "" || email === "" || password === "" || plan === "" || fechaNacimiento === "") {
         res.send(
             {
-                statusCode: 200,
-                message: 'El estudiante se ha creado exitosamente.',
-                user: result,
+                statusCode: 404,
+                message: 'Campos en blanco.'
             }
         );
         res.end();
-    }).catch(error => {
-        res.send(error);
+    } else if (!/^[a-zA-Z ]*$/.test(nombre)) {
+        res.send(
+            {
+                statusCode: 404,
+                message: 'Nombre inválido.'
+            }
+        );
         res.end();
-    })
+    } else if (!/^[a-zA-Z ]*$/.test(apellido)) {
+        res.send(
+            {
+                statusCode: 404,
+                message: 'Apellido inválido.'
+            }
+        );
+        res.end();
+    } else if (!/^(([^<>()[\]\\.,;:\s@']+(\.[^<>()\\[\]\\.,;:\s@']+)*)|('.+'))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email)) {
+        res.send(
+            {
+                statusCode: 404,
+                message: 'Email inválido.'
+            }
+        );
+        res.end();
+    } else if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&()\-_=+{};:,<.>])(?!.*\s).{8,}$/.test(password)) {
+        res.send(
+            {
+                statusCode: 404,
+                message: 'Contraseña inválida.'
+            }
+        );
+        res.end();
+    } else if (plan !== "Gratis" && plan !== "Plus" & plan !== "Avanzado") {
+        res.send(
+            {
+                statusCode: 404,
+                message: 'Plan inválido.'
+            }
+        );
+        res.end();
+    } else if (!new Date(fechaNacimiento).getTime()) {
+        res.send(
+            {
+                statusCode: 404,
+                message: 'Fecha de nacimiento inválida.'
+            }
+        );
+        res.end();
+    } else {
+        usuario.find({ email }).then(result => {
+            if (result.length) {
+                console.log('Usuario ya existe.')
+                res.send(
+                    {
+                        statusCode: 400,
+                        message: 'Usuario ya existe.'
+                    }
+                );
+                res.end();
+            } else {
+                bcrypt.hash(password, 10).then(hashedPassword => {
+                    let u = new usuario({
+                        nombre: nombre,
+                        apellido: apellido,
+                        email: email,
+                        password: hashedPassword,
+                        plan: plan,
+                        fechaNacimiento: fechaNacimiento
+                    });
+
+                    u.save().then(result => {
+                        const token = jwt.sign({ email: u.email, _id: u._id }, SECRET_KEY);
+                        res.cookie("jwt", token, {
+                            httpOnly: true,
+                            maxAge: 24 * 60 * 60 * 1000
+                        })
+                        res.send(
+                            {
+                                statusCode: 200,
+                                message: 'El usuario se ha creado exitosamente.',
+                                user: result,
+                                token: token
+                            }
+                        );
+
+                        res.end();
+                    }).catch(error => {
+                        console.log(error);
+                        res.send(
+                            {
+                                statusCode: 404,
+                                message: 'Error al guardar usuario.'
+                            }
+                        );
+                        res.end();
+                    })
+                }).catch(err => {
+                    res.send(
+                        {
+                            statusCode: 404,
+                            message: 'Error al hash de la contraseña.'
+                        }
+                    );
+                    res.end();
+                })
+
+            }
+
+        }).catch(error => {
+            
+            res.send(
+                {
+                    statusCode: 404,
+                    message: 'Error al buscar usuario.'
+                }
+            );
+            res.end();
+        })
+    }
 });
+
+
+router.post('/login', async function (req, res) {
+    const u = await usuario.findOne({email: req.body.email})
+
+    if (!u) {
+        res.send(
+            {
+                statusCode: 401,
+                message: 'Usuario no encontrado.'
+            }
+        );
+        res.end();
+    } else {
+        if (!await bcrypt.compare(req.body.password, u.password)) {
+            res.send(
+                {
+                    statusCode: 401,
+                    message: 'Contraseña incorrecta.'
+                }
+            );
+            res.end();
+        } else {
+            const token = jwt.sign({_id: u._id}, SECRET_KEY);
+
+            res.cookie("jwt", token, {
+                httpOnly: true,
+                maxAge: 24 * 60 * 60 * 1000
+            });
+
+            res.send(
+                {
+                    statusCode: 200,
+                    message: 'El usuario ha iniciado sesión.'
+                }
+            );
+
+            res.end();
+
+        }
+    }
+});
+
+// Cerrar sesion de un usuario
+router.post('/cerrar-sesion', function (req, res) {
+    
+        res.cookie("jwt","",{maxAge:0});
+        res.send({
+            statusCode: 200,
+            message:"El usuario ha cerrado sesión."
+        });
+        res.end();
+
+});
+
+// Obtener info del usuario loggeado
+router.get('/autenticado', async function (req, res) {
+    try {
+        
+        const cookie = req.cookies['jwt'];
+        
+        const logged = jwt.verify(cookie, SECRET_KEY);
+        if (!logged) {
+            
+            res.send(
+                {
+                    statusCode: 401,
+                    message: 'Usuario no autenticado.'
+                }
+            );
+            res.end();
+
+        } else {
+            const u = await usuario.findOne({ _id: logged._id });
+
+            const { password, ...data } = await u.toJSON();
+            res.send(data);
+            res.end();
+        }
+    } catch (error) {
+        
+        res.send(
+            {
+                statusCode: 401,
+                message: 'Usuario no autenticado.'
+            }
+        );
+        res.end();
+    }
+});
+
 
 // //Obtener todos los usuarios
 router.get('/', function (req, res) {
@@ -33,7 +243,7 @@ router.get('/', function (req, res) {
         res.send(
             {
                 statusCode: 200,
-                message: 'Los estudiantes han sido devueltos exitosamente.',
+                message: 'Los usuarios han sido devueltos exitosamente.',
                 user: result,
             }
         );
@@ -50,7 +260,7 @@ router.get('/:id', function (req, res) {
         res.send(
             {
                 statusCode: 200,
-                message: 'El estudiante ha sido devuelto exitosamente.',
+                message: 'El usuario ha sido devuelto exitosamente.',
                 user: result,
             }
         );
