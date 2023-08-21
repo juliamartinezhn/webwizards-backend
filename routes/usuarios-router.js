@@ -3,12 +3,13 @@ var router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 var usuario = require('../models/usuario');
+const FolderModel = require('../models/carpeta');
 
 const SECRET_KEY = "NOTESAPI";
 
 //Crear un usuario
 router.post('/', function (req, res) {
-    
+
     let { nombre, apellido, email, password, plan, fechaNacimiento } = req.body;
     nombre = nombre.trim();
     apellido = apellido.trim();
@@ -76,7 +77,7 @@ router.post('/', function (req, res) {
     } else {
         usuario.find({ email }).then(result => {
             if (result.length) {
-                console.log('Usuario ya existe.')
+
                 res.send(
                     {
                         statusCode: 400,
@@ -85,15 +86,20 @@ router.post('/', function (req, res) {
                 );
                 res.end();
             } else {
-                bcrypt.hash(password, 10).then(hashedPassword => {
-                    let u = new usuario({
+                bcrypt.hash(password, 10).then(async hashedPassword => {
+                    let projectFolder = new FolderModel({ nameFolder: "Unidad Proyectos" });
+                    await projectFolder.save();
+
+                    let u = await new usuario({
                         nombre: nombre,
                         apellido: apellido,
                         email: email,
                         password: hashedPassword,
                         plan: plan,
-                        fechaNacimiento: fechaNacimiento
+                        fechaNacimiento: fechaNacimiento,
+                        projectsFolder: projectFolder
                     });
+
 
                     u.save().then(result => {
                         const token = jwt.sign({ email: u.email, _id: u._id }, SECRET_KEY);
@@ -112,7 +118,7 @@ router.post('/', function (req, res) {
 
                         res.end();
                     }).catch(error => {
-                        console.log(error);
+
                         res.send(
                             {
                                 statusCode: 404,
@@ -134,7 +140,7 @@ router.post('/', function (req, res) {
             }
 
         }).catch(error => {
-            
+
             res.send(
                 {
                     statusCode: 404,
@@ -148,8 +154,9 @@ router.post('/', function (req, res) {
 
 
 router.post('/login', async function (req, res) {
-    const u = await usuario.findOne({email: req.body.email})
-
+    
+    const u = await usuario.findOne({ email: req.body.email })
+    
     if (!u) {
         res.send(
             {
@@ -159,56 +166,63 @@ router.post('/login', async function (req, res) {
         );
         res.end();
     } else {
-        if (!await bcrypt.compare(req.body.password, u.password)) {
-            res.send(
-                {
-                    statusCode: 401,
-                    message: 'Contraseña incorrecta.'
-                }
-            );
-            res.end();
-        } else {
-            const token = jwt.sign({_id: u._id}, SECRET_KEY);
+        
+        
+        
+        bcrypt.compare(req.body.password, u.password)
+            .then(result => {
+                
+                const token = jwt.sign({ _id: u._id }, SECRET_KEY);
+                
+                
+                res.cookie("jwt", token, {
+                    httpOnly: true,
+                    maxAge: 24 * 60 * 60 * 1000
+                });
 
-            res.cookie("jwt", token, {
-                httpOnly: true,
-                maxAge: 24 * 60 * 60 * 1000
+                res.send(
+                    {
+                        statusCode: 200,
+                        message: 'El usuario ha iniciado sesión.'
+                    }
+                );
+
+                res.end();
+            }).catch(error => {
+                res.send(
+                    {
+                        statusCode: 400,
+                        message: 'Credenciales invalidas.'
+                    }
+                );
+                
+                res.end();
             });
 
-            res.send(
-                {
-                    statusCode: 200,
-                    message: 'El usuario ha iniciado sesión.'
-                }
-            );
-
-            res.end();
-
-        }
     }
 });
 
 // Cerrar sesion de un usuario
 router.post('/cerrar-sesion', function (req, res) {
-    
-        res.cookie("jwt","",{maxAge:0});
-        res.send({
-            statusCode: 200,
-            message:"El usuario ha cerrado sesión."
-        });
-        res.end();
+
+    res.cookie("jwt", "", { maxAge: 0 });
+    res.send({
+        statusCode: 200,
+        message: "El usuario ha cerrado sesión."
+    });
+    res.end();
 
 });
 
 // Obtener info del usuario loggeado
 router.get('/autenticado', async function (req, res) {
     try {
-        
+
         const cookie = req.cookies['jwt'];
-        
+
         const logged = jwt.verify(cookie, SECRET_KEY);
         if (!logged) {
-            
+
             res.send(
                 {
                     statusCode: 401,
@@ -221,11 +235,12 @@ router.get('/autenticado', async function (req, res) {
             const u = await usuario.findOne({ _id: logged._id });
 
             const { password, ...data } = await u.toJSON();
+
             res.send(data);
             res.end();
         }
     } catch (error) {
-        
+
         res.send(
             {
                 statusCode: 401,

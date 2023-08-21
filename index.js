@@ -3,15 +3,14 @@ var cors = require('cors');
 var bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 var database = require('./modules/database');
-var database = require('./modules/database');
 var usuariosRouter = require('./routes/usuarios-router');
+var carpetasRouter = require('./routes/carpetas-router');
+var proyectosRouter = require('./routes/proyectos-router');
 
 var app = express();
-
-// app.use(cors());
 app.use(
     cors({
-      origin: 'http://localhost:4200', // Replace with your frontend's URL
+      origin: 'http://localhost:4200', 
       credentials: true, // Allow credentials (cookies)
     })
   );
@@ -19,6 +18,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use('/usuarios', usuariosRouter);
+app.use('/carpetas', carpetasRouter);
+app.use('/proyectos', proyectosRouter);
 
 
 //Starting server

@@ -1,7 +1,6 @@
-var mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const mongoose = require('mongoose');
 
-var esquema = new mongoose.Schema({
+const esquema = new mongoose.Schema({
     nombre: {
         type: String,
         required: true
@@ -26,6 +25,10 @@ var esquema = new mongoose.Schema({
     },
     fechaNacimiento: {
         type: Date,
+        required: true
+    },
+    projectsFolder: {
+        type: Object,
         required: true
     },
 });
