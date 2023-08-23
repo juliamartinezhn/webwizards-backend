@@ -1,59 +1,145 @@
 const express = require('express');
 const router = express.Router();
-const folderModel = require('../models/carpeta');
-const content = require('../models/contenido');
-const proyectoModel = require('../models/proyecto');
+var mongoose = require('mongoose');
+const FolderModel = require('../models/carpeta');
+const ProyectoModel = require('../models/proyecto');
 
-// Endpoint para crear un proyecto dentro de una carpeta
+// Crear un proyecto dentro de una carpeta
 router.post('/carpetas/:carpetaId', async (req, res) => {
+    
     try {
-        const { carpetaId } = req.params;
-        const { nameProject } = req.body;
-
+        const carpetaId = req.params.carpetaId;
+        const nameProject = req.body.nameProject;
         // Buscar la carpeta por ID
-        const folder = await folderModel.findById(carpetaId);
+        const folder = await FolderModel.findById(carpetaId);
         if (!folder) {
             return res.status(404).json({ message: 'Carpeta no encontrada' });
         }
 
         // Crear un nuevo proyecto y guardarlo
-        const project = new proyectoModel({ nameProject });
+        const project = new ProyectoModel(
+            { 
+                nameProject: nameProject,
+                html: "",
+                css: "",
+                js: ""
+            }
+        );
         await project.save();
 
-        
+        FolderModel.findByIdAndUpdate(
+            {
+                _id: carpetaId
+            },
+            {
+                $push: {
+                    children: {
+                        _id: new mongoose.Types.ObjectId(project._id),
+                        nameProject: project.nameProject
+                    }
+                }
+            }
+        )
+            .then(result => console.log(result))
+            .catch(error => {
+                res.send(error);
+                res.end();
+            });
 
-        // Crear un ContentItem para el proyecto
-        // const contentItem = new content({ tipo: 'proyecto', content: project._id });
-        // await contentItem.save();
 
-        // Agregar el proyecto a la carpeta y guardar la carpeta
-        // console.log(contentItem);
-        folder.children.push(project);
-        await folder.save();
-
-        res.status(201).json({ message: 'Proyecto creado en la carpeta', project });
+        res.send(
+            {
+                statusCode: 200,
+                message: 'Proyecto creada exitosamente',
+                newProject: project
+            }
+        );
+        res.end();
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error en el servidor' });
     }
 });
 
-//Obtener folders con proyectos
-// router.get('/', function (req, res)  {
-//     FolderModel.find().then(result => {
-//         let projects = result.map()
-//         res.send(
-//             {
-//                 statusCode: 200,
-//                 message: 'Los folders han sido devueltos exitosamente.',
-//                 projects: result,
-//             }
-//         );
-//         res.end();
-//     }).catch(error => {
-//         res.send(error);
-//         res.end();
-//     });
-// })
+
+
+//Obtener proyectos 
+router.get('/', function (req, res) {
+    ProyectoModel.find().then(result => {
+        res.send(
+            {
+                statusCode: 200,
+                message: 'Los proyectos han sido devueltos exitosamente.',
+                user: result,
+            }
+        );
+        res.end();
+    }).catch(error => {
+        res.send(error);
+        res.end();
+    });
+})
+
+
+// Obtener proyectos
+router.get('/:proyectoId', function (req, res)  {
+    ProyectoModel.find(
+        {
+            _id: req.params.proyectoId
+        }
+    ).then(result => {
+        res.send(
+            {
+                statusCode: 200,
+                message: 'El proyecto ha sido devuelto exitosamente.',
+                project: result[0],
+            }
+        );
+        res.end();
+    }).catch(error => {
+        res.send(error);
+        res.end();
+    });
+})
+
+// Guardar un proyecto 
+router.post('/:proyectoId', async (req, res) => {
+    try {
+        const { proyectoId } = req.params;
+
+        ProyectoModel.findByIdAndUpdate(
+            {
+                _id: new mongoose.Types.ObjectId(proyectoId)
+            },
+            {
+                $set: {
+                    html: req.body.html,
+                    css: req.body.css,
+                    js: req.body.js,
+                }
+            },
+            { new: true }
+        ).then(result => {
+            res.send(
+                {
+                    statusCode: 200,
+                    message: 'Proyecto guardado exitosamente',
+                    proyecto: result
+                }
+            );
+            res.end();
+        }).catch(error => {
+            console.log(error)
+            res.send(error);
+            res.end();
+        });
+
+
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error en el servidor' });
+    }
+});
 
 module.exports = router;

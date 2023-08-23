@@ -21,14 +21,16 @@ router.get('/', function (req, res) {
     });
 })
 
-// Endpoint para crear una carpeta
-router.post('/', async (req, res) => {
-    const { nameFolder, carpetaId } = req.body;
-
+// Crear una carpeta
+router.post('/:idCarpetaPadre', async (req, res) => {
+    const { nameFolder } = req.body;
+    const { idCarpetaPadre } = req.params;
+console.log(nameFolder)
+console.log(idCarpetaPadre)
     let f = { nameFolder: nameFolder };
     let folder;
-    if (carpetaId) {
-        folder = await FolderModel.findById(carpetaId);
+    if (idCarpetaPadre) {
+        folder = await FolderModel.findById(idCarpetaPadre);
         if (!folder) {
             return res.status(404).json({ message: 'Carpeta no encontrada' });
         }
@@ -39,7 +41,7 @@ router.post('/', async (req, res) => {
 
     FolderModel.findByIdAndUpdate(
         {
-            _id: carpetaId
+            _id: idCarpetaPadre
         },
         {
             $push: {
@@ -50,7 +52,8 @@ router.post('/', async (req, res) => {
                 }
             }
         }
-    ).then(result => console.log(result))
+    )
+        .then(result => console.log(result))
         .catch(error => {
             res.send(error);
             res.end();
@@ -58,7 +61,13 @@ router.post('/', async (req, res) => {
 
 
 
-    res.send({ message: 'Carpeta creada exitosamente', newFolder: newFolder });
+    res.send(
+        { 
+            statusCode: 200,
+            message: 'Carpeta creada exitosamente', 
+            newFolder: newFolder 
+        }
+    );
     res.end();
 });
 
@@ -66,15 +75,16 @@ router.post('/', async (req, res) => {
 
 //Obtener folders hijos de un folder padre
 router.get('/hijos/:idFolderPadre', async function (req, res) {
-    
+
     const { idFolderPadre } = req.params;
-    
+    console.log(idFolderPadre)
     try {
         FolderModel.find(
             {
                 _id: idFolderPadre
             })
             .then(result => {
+                console.log(result);
                 res.send(
                     {
                         statusCode: 200,
@@ -94,7 +104,7 @@ router.get('/hijos/:idFolderPadre', async function (req, res) {
 
     } catch (error) {
 
-        res.status(500).send('Error interno del servidor'); 
+        res.status(500).send('Error interno del servidor');
     }
 
 
