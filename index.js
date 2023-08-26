@@ -10,7 +10,7 @@ var proyectosRouter = require('./routes/proyectos-router');
 var app = express();
 app.use(
     cors({
-      origin: 'http://localhost:4200', 
+      origin: 'http://webwizards-frontend-phi.vercel.app', 
       credentials: true, // Allow credentials (cookies)
     })
   );
