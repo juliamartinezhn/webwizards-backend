@@ -5,9 +5,13 @@ const esquema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    creator: Object,
+    created_at:Date,
+    modified_at:Date,
     html: String,
     css: String,
-    js: String
+    js: String,
+    collaborators:Array,
 });
 
 

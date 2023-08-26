@@ -7,7 +7,10 @@ const esquema = new mongoose.Schema({
         type: String,
         required: true
     },
-    children: Array
+    creator: Object,
+    created_at:Date,
+    children: Array,
+    collaborators:Array,
 });
 
 module.exports = mongoose.model('carpetas', esquema);
