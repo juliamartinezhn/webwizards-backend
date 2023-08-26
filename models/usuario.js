@@ -31,6 +31,8 @@ const esquema = new mongoose.Schema({
         type: Object,
         required: true
     },
+    totalProjects:Number,
+    collaborations: Array
 });
 
 

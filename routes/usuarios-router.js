@@ -87,7 +87,10 @@ router.post('/', function (req, res) {
                 res.end();
             } else {
                 bcrypt.hash(password, 10).then(async hashedPassword => {
-                    let projectFolder = new FolderModel({ nameFolder: "Unidad Proyectos" });
+                    let projectFolder = new FolderModel({ 
+                        nameFolder: "Unidad Proyectos",
+                        created_at: new Date()
+                    });
                     await projectFolder.save();
 
                     let u = await new usuario({
@@ -97,7 +100,8 @@ router.post('/', function (req, res) {
                         password: hashedPassword,
                         plan: plan,
                         fechaNacimiento: fechaNacimiento,
-                        projectsFolder: projectFolder
+                        projectsFolder: projectFolder,
+                        totalProjects:0
                     });
 
 
