@@ -109,7 +109,9 @@ router.post('/', function (req, res) {
                         const token = jwt.sign({ email: u.email, _id: u._id }, SECRET_KEY);
                         res.cookie("jwt", token, {
                             httpOnly: true,
-                            maxAge: 24 * 60 * 60 * 1000
+                            maxAge: 24 * 60 * 60 * 1000,
+                            sameSite: "None", 
+                            secure: true
                         })
                         res.send(
                             {
@@ -181,7 +183,9 @@ router.post('/login', async function (req, res) {
                 
                 res.cookie("jwt", token, {
                     httpOnly: true,
-                    maxAge: 24 * 60 * 60 * 1000
+                    maxAge: 24 * 60 * 60 * 1000,
+                    sameSite: "None", 
+                    secure: true
                 });
 
                 res.send(
