@@ -96,7 +96,7 @@ router.post('/carpetas/:carpetaId/usuarios/:creatorId', async (req, res) => {
                 }
             )
                 .then(result => {
-                    
+
                     res.send(
                         {
                             statusCode: 200,
@@ -356,7 +356,7 @@ router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
 
 // Obtener las colaboraciones de un usuario
 router.get('/usuarios/:usuarioId', async (req, res) => {
-    
+
 
     UsuarioModel.find(
         {
@@ -385,6 +385,37 @@ router.get('/usuarios/:usuarioId', async (req, res) => {
 
 
 });
+
+// Obtener ultimos 3 proyectos de un usuario
+router.get('/usuarios/:usuarioId/ultimos', async (req, res) => {
+  
+    try {
+        const proyectos = await ProyectoModel
+            .find({ "creator._id": new mongoose.Types.ObjectId(req.params.usuarioId) })
+            .sort({ modified_at: -1 }) // Ordenar por fecha de modificación descendente
+            .limit(3); // Limitar a los últimos 3 proyectos
+        res.send(
+            {
+                statusCode: 200,
+                message: 'Los últimos proyectos modificados del usuario han sido devueltos exitosamente.',
+                proyectos: proyectos,
+            }
+        );
+        res.end();
+    } catch (error) {
+        console.error(error);
+        res.send(
+            {
+                statusCode: 500,
+                message: 'Error al obtener los últimos proyectos modificados del usuario.'
+            }
+        );
+        res.end();
+        
+    }
+
+});
+
 
 module.exports = router;
 
