@@ -222,14 +222,18 @@ router.post('/:proyectoId', async (req, res) => {
 });
 
 // Añadir colaborador a un proyecto 
-router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
+router.get('/:proyectoId/usuarios/:collabEmail', async (req, res) => {
 
     try {
-        const collabId = req.params.collabId;
+        const collabEmail = req.params.collabEmail;
         const proyectoId = req.params.proyectoId;
         // Buscar al collaborador del proyecto por ID
-        const collaborator = await UsuarioModel.findById(collabId);
-        if (!collaborator) {
+        const collaborator = await UsuarioModel.find(
+            {
+                email: collabEmail
+            }
+        );
+        if (!collaborator[0]) {
             res.send(
                 {
                     statusCode: 404,
@@ -254,7 +258,7 @@ router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
             return;
         }
 
-        if (proyecto.creator._id.toString() === collabId) {
+        if (proyecto.creator.email === collabEmail) {
             res.send(
                 {
                     statusCode: 400,
@@ -267,7 +271,7 @@ router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
 
         // Verificar si el colaborador ya existe en la lista de colaboradores
         const existeColaborador = proyecto.collaborators.some((colaborador) => {
-            return colaborador._id.toString() === collabId;
+            return colaborador.email === collabEmail;
         });
 
         if (existeColaborador) {
@@ -281,8 +285,8 @@ router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
             return;
         }
 
-        let { password, plan, fechaNacimiento, projectsFolder, collaborations, ...dataCollab } = await collaborator.toJSON();
-
+        let { password, plan, fechaNacimiento, projectsFolder, collaborations,totalProjects, ...dataCollab } = await collaborator[0].toJSON();
+        
 
         ProyectoModel.findByIdAndUpdate(
             {
@@ -300,7 +304,7 @@ router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
 
                 UsuarioModel.findByIdAndUpdate(
                     {
-                        _id: collabId
+                        _id: collaborator[0]._id
                     },
                     {
                         $push: {
@@ -342,7 +346,7 @@ router.get('/:proyectoId/usuarios/:collabId', async (req, res) => {
 
 
     } catch (error) {
-
+console.log(error)
         res.send(
             {
                 statusCode: 500,
