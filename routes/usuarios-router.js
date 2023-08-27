@@ -294,4 +294,55 @@ router.get('/:id', function (req, res) {
     });
 });
 
+// Cambiar plan del usuario
+router.post('/:usuarioId', async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const { nuevoPlan } = req.body;
+
+        usuario.findByIdAndUpdate(
+            {
+                _id: usuarioId
+            },
+            {
+                $set: {
+                    plan: nuevoPlan
+                }
+            },
+            { new: true }
+        ).then(result => {
+            
+            res.send(
+                {
+                    statusCode: 200,
+                    message: 'Plan actualizado correctamente exitosamente',
+                    usuario: result
+                }
+            );
+            res.end();
+        }).catch(error => {
+            res.send(
+                {
+                    statusCode: 500,
+                    message: 'Error al actualizar plan del usuario'
+                }
+            );
+            res.end();
+        });
+
+
+
+    } catch (error) {
+        res.send(
+            {
+                statusCode: 500,
+                message: 'Error en el servidor'
+            }
+        );
+        res.end();
+    }
+});
+
+
 module.exports = router;
+

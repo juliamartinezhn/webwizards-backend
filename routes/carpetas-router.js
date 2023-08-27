@@ -23,6 +23,27 @@ router.get('/', function (req, res) {
     });
 })
 
+//Obtener una carpeta
+router.get('/:carpetaId', function (req, res) {
+    FolderModel.find(
+        {
+            _id: req.params.carpetaId
+        }
+    ).then(result => {
+        res.send(
+            {
+                statusCode: 200,
+                message: 'La carpeta ha sido devuelta exitosamente.',
+                carpeta: result,
+            }
+        );
+        res.end();
+    }).catch(error => {
+        res.send(error);
+        res.end();
+    });
+})
+
 // Crear una carpeta
 router.post('/:idCarpetaPadre/usuarios/:creatorId', async (req, res) => {
     const { nameFolder } = req.body;
@@ -100,14 +121,14 @@ router.post('/:idCarpetaPadre/usuarios/:creatorId', async (req, res) => {
 router.get('/hijos/:idFolderPadre', async function (req, res) {
 
     const { idFolderPadre } = req.params;
-    console.log(idFolderPadre)
+    
     try {
         FolderModel.find(
             {
                 _id: idFolderPadre
             })
             .then(result => {
-                console.log(result);
+                
                 res.send(
                     {
                         statusCode: 200,
@@ -135,13 +156,18 @@ router.get('/hijos/:idFolderPadre', async function (req, res) {
 })
 
 // Añadir colaborador a un carpeta 
-router.get('/:carpetaId/usuarios/:collabId', async (req, res) => {
+router.get('/:carpetaId/usuarios/:collabEmail', async (req, res) => {
 
     try {
-        const collabId = req.params.collabId;
+        const collabEmail = req.params.collabEmail;
         const carpetaId = req.params.carpetaId;
         // Buscar al collaborador de la carpeta por ID
-        const collaborator = await UsuarioModel.findById(collabId);
+        // Buscar al collaborador del proyecto por ID
+        const collaborator = await UsuarioModel.find(
+            {
+                email: collabEmail
+            }
+        );
         if (!collaborator) {
             res.send(
                 {
@@ -167,7 +193,7 @@ router.get('/:carpetaId/usuarios/:collabId', async (req, res) => {
             return;
         }
 
-        if (carpeta.creator._id.toString() === collabId) {
+        if (carpeta.creator.email === collabEmail) {
             res.send(
                 {
                     statusCode: 400,
@@ -180,7 +206,7 @@ router.get('/:carpetaId/usuarios/:collabId', async (req, res) => {
 
         // Verificar si el colaborador ya existe en la lista de colaboradores
         const existeColaborador = carpeta.collaborators.some((colaborador) => {
-            return colaborador._id.toString() === collabId;
+            return colaborador.email === collabEmail;
         });
 
         if (existeColaborador) {
@@ -194,7 +220,7 @@ router.get('/:carpetaId/usuarios/:collabId', async (req, res) => {
             return;
         }
 
-        let { password, plan, fechaNacimiento, projectsFolder, collaborations, ...dataCollab } = await collaborator.toJSON();
+        let { password, plan, fechaNacimiento, projectsFolder, collaborations, ...dataCollab } = await collaborator[0].toJSON();
 
 
         CarpetaModel.findByIdAndUpdate(
@@ -213,7 +239,7 @@ router.get('/:carpetaId/usuarios/:collabId', async (req, res) => {
 
                 UsuarioModel.findByIdAndUpdate(
                     {
-                        _id: collabId
+                        _id: collaborator[0]._id
                     },
                     {
                         $push: {
